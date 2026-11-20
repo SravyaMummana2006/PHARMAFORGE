@@ -1,0 +1,45 @@
+# PHARMAFORGE Default Configuration
+system:
+  project_name: "PHARMAFORGE"
+  version: "0.1.0"
+  random_seed: 42
+  environment: "development"
+
+sandbox:
+  timeout_seconds: 15
+  memory_limit_mb: 1024
+  max_output_length: 5000
+  allowed_modules:
+    - "math"
+    - "numpy"
+    - "scipy"
+    - "rdkit"
+    - "torch"
+    - "pydantic"
+    - "collections"
+    - "itertools"
+    - "typing"
+
+verifier:
+  strict_valence: true
+  pains_filter_enabled: true
+  brenk_filter_enabled: true
+  qed_threshold: 0.5
+  sascore_threshold: 4.5
+  max_molecular_weight: 600.0
+
+skill_library:
+  storage_dir: "skills_cache"
+  chroma_db_dir: "skills_cache/chroma"
+  similarity_threshold: 0.75
+  max_retrieved_skills: 3
+  auto_prune_failures: 5
+
+repair_engine:
+  max_repair_attempts: 3
+  backoff_factor: 1.5
+
+logging:
+  mlflow_enabled: true
+  mlflow_experiment_name: "pharmaforge-lead-optimization"
+  log_level: "INFO"

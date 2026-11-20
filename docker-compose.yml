@@ -1,0 +1,65 @@
+services:
+  # Central MLflow tracking server for experiment metrics and molecular artifacts
+  mlflow:
+    image: python:3.11-slim
+    container_name: pharmaforge-mlflow
+    restart: unless-stopped
+    command: >
+      bash -c "pip install --no-cache-dir mlflow &&
+               mlflow server --backend-store-uri sqlite:////mlflow/mlflow.db --default-artifact-root /mlflow/artifacts --host 0.0.0.0 --port 5000"
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/mlflow
+    networks:
+      - pharmaforge-net
+
+  # Core API server: orchestrates multi-agent tasks, VPSL, and verification
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pharmaforge-api
+    restart: unless-stopped
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ENVIRONMENT=production
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data
+      - ./skills_cache:/app/skills_cache
+    depends_on:
+      - mlflow
+    networks:
+      - pharmaforge-net
+
+  # Interactive Streamlit scientific dashboard
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pharmaforge-ui
+    restart: unless-stopped
+    command: ["streamlit", "run", "ui/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    environment:
+      - API_URL=http://api:8000
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./ui:/app/ui
+      - ./src:/app/src
+    depends_on:
+      - api
+    networks:
+      - pharmaforge-net
+
+volumes:
+  mlflow_data:
+
+networks:
+  pharmaforge-net:
+    driver: bridge
