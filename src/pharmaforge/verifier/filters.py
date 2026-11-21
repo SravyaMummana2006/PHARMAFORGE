@@ -1,9 +1,11 @@
-"""Substructure filters and alert catalogs for PAINS and Brenk toxicophores."""
+"""Substructure filters and alert catalogs using RDKit FilterCatalog and verified SMARTS patterns."""
 from __future__ import annotations
 
-# Representative SMARTS patterns for common PAINS (Pan-Assay Interference Compounds)
-# Reference: Baell & Holloway, J. Med. Chem. 2010
-PAINS_SMARTS: dict[str, str] = {
+from pharmaforge.core.exceptions import RDKitUnavailableError
+
+# Supplementary medicinal chemistry structural alerts
+# Documented alert patterns for reactive or interfering substructures
+SUPPLEMENTARY_PAINS_SMARTS: dict[str, str] = {
     "quinone": "[#6]1(=[O,S])[#6]=[#6][#6](=[O,S])[#6]=[#6]1",
     "rhodanine": "O=C1NC(=S)SC1=*",
     "ene_rhodanine": "O=C1NC(=S)S/C1=C",
@@ -16,8 +18,7 @@ PAINS_SMARTS: dict[str, str] = {
     "epoxide": "C1OC1",
 }
 
-# Representative Brenk structural alerts (Brenk et al., ChemMedChem 2008)
-BRENK_SMARTS: dict[str, str] = {
+SUPPLEMENTARY_BRENK_SMARTS: dict[str, str] = {
     "nitro_aromatic": "c[N+](=O)[O-]",
     "aliphatic_ester": "[CX4][C](=O)O[CX4]",
     "thiocarbonyl": "[#6](=[S])",
@@ -30,75 +31,93 @@ BRENK_SMARTS: dict[str, str] = {
 
 
 class SubstructureFilter:
-    """Evaluates molecules against toxicophore and interference alert catalogs."""
+    """Evaluates molecules against official RDKit FilterCatalogs (PAINS, Brenk) and supplementary SMARTS.
+    
+    Strictly requires RDKit. Does NOT perform silent heuristic or string-based fallback.
+    """
 
     def __init__(self):
-        self._rdkit_available = False
-        self._pains_mols = {}
-        self._brenk_mols = {}
-        self._initialize_oracles()
-
-    def _initialize_oracles(self) -> None:
-        """Attempt to compile SMARTS patterns using RDKit."""
         try:
             from rdkit import Chem
-            self._rdkit_available = True
-            for name, smarts in PAINS_SMARTS.items():
-                mol = Chem.MolFromSmarts(smarts)
-                if mol is not None:
-                    self._pains_mols[name] = mol
-            for name, smarts in BRENK_SMARTS.items():
-                mol = Chem.MolFromSmarts(smarts)
-                if mol is not None:
-                    self._brenk_mols[name] = mol
-        except ImportError:
-            self._rdkit_available = False
+            from rdkit.Chem.FilterCatalog import FilterCatalog, FilterCatalogParams
+            self._Chem = Chem
+        except ImportError as e:
+            raise RDKitUnavailableError("SubstructureFilter initialization (FilterCatalog)") from e
 
-    def check_pains(self, smiles: str, mol: any = None) -> tuple[bool, list[str]]:
-        """Check if molecule triggers PAINS alerts.
+        # 1. Initialize RDKit Official PAINS Catalog (PAINS_A, PAINS_B, PAINS_C)
+        pains_params = FilterCatalogParams()
+        pains_params.AddCatalog(FilterCatalogParams.FilterCatalogs.PAINS_A)
+        pains_params.AddCatalog(FilterCatalogParams.FilterCatalogs.PAINS_B)
+        pains_params.AddCatalog(FilterCatalogParams.FilterCatalogs.PAINS_C)
+        self._pains_catalog = FilterCatalog(pains_params)
+
+        # 2. Initialize RDKit Official Brenk Catalog
+        brenk_params = FilterCatalogParams()
+        brenk_params.AddCatalog(FilterCatalogParams.FilterCatalogs.BRENK)
+        self._brenk_catalog = FilterCatalog(brenk_params)
+
+        # 3. Initialize Supplementary Curated SMARTS Patterns
+        self._supp_pains = {}
+        for name, smarts in SUPPLEMENTARY_PAINS_SMARTS.items():
+            pattern = Chem.MolFromSmarts(smarts)
+            if pattern is not None:
+                self._supp_pains[name] = pattern
+
+        self._supp_brenk = {}
+        for name, smarts in SUPPLEMENTARY_BRENK_SMARTS.items():
+            pattern = Chem.MolFromSmarts(smarts)
+            if pattern is not None:
+                self._supp_brenk[name] = pattern
+
+    def _ensure_mol(self, mol_or_smiles: any) -> any:
+        """Helper to ensure input is a valid RDKit Mol object."""
+        if isinstance(mol_or_smiles, str):
+            mol = self._Chem.MolFromSmiles(mol_or_smiles)
+            if mol is None:
+                raise ValueError(f"Cannot parse invalid SMILES for substructure filtering: {mol_or_smiles}")
+            return mol
+        return mol_or_smiles
+
+    def check_pains(self, mol_or_smiles: any) -> tuple[bool, list[str]]:
+        """Check if molecule triggers PAINS alerts via RDKit FilterCatalog and supplementary SMARTS.
         
         Returns:
             Tuple of (passed: bool, matched_alerts: list[str])
         """
-        matched = []
-        if self._rdkit_available:
-            from rdkit import Chem
-            if mol is None:
-                mol = Chem.MolFromSmiles(smiles)
-            if mol is not None:
-                for name, pattern in self._pains_mols.items():
-                    if mol.HasSubstructMatch(pattern):
-                        matched.append(f"PAINS:{name}")
-                return len(matched) == 0, matched
+        mol = self._ensure_mol(mol_or_smiles)
+        matched: list[str] = []
 
-        # Heuristic fallback if RDKit is not installed
-        # Check simple characteristic string fragments
-        if "N=N" in smiles or "[N+]#[C-]" in smiles:
-            matched.append("PAINS:azo_or_isocyanide_heuristic")
-        if "C1OC1" in smiles:
-            matched.append("PAINS:epoxide_heuristic")
+        # Official RDKit FilterCatalog matches
+        for entry in self._pains_catalog.GetMatches(mol):
+            matched.append(f"PAINS_Catalog:{entry.GetDescription()}")
+
+        # Supplementary SMARTS pattern matches
+        for name, pattern in self._supp_pains.items():
+            if mol.HasSubstructMatch(pattern):
+                alert = f"PAINS_Supp:{name}"
+                if alert not in matched:
+                    matched.append(alert)
+
         return len(matched) == 0, matched
 
-    def check_brenk(self, smiles: str, mol: any = None) -> tuple[bool, list[str]]:
-        """Check if molecule triggers Brenk structural alerts.
+    def check_brenk(self, mol_or_smiles: any) -> tuple[bool, list[str]]:
+        """Check if molecule triggers Brenk structural alerts via RDKit FilterCatalog and supplementary SMARTS.
         
         Returns:
             Tuple of (passed: bool, matched_alerts: list[str])
         """
-        matched = []
-        if self._rdkit_available:
-            from rdkit import Chem
-            if mol is None:
-                mol = Chem.MolFromSmiles(smiles)
-            if mol is not None:
-                for name, pattern in self._brenk_mols.items():
-                    if mol.HasSubstructMatch(pattern):
-                        matched.append(f"Brenk:{name}")
-                return len(matched) == 0, matched
+        mol = self._ensure_mol(mol_or_smiles)
+        matched: list[str] = []
 
-        # Heuristic fallback for Brenk
-        if "[N+](=O)[O-]" in smiles:
-            matched.append("Brenk:nitro_heuristic")
-        if "OO" in smiles:
-            matched.append("Brenk:peroxide_heuristic")
+        # Official RDKit FilterCatalog matches
+        for entry in self._brenk_catalog.GetMatches(mol):
+            matched.append(f"Brenk_Catalog:{entry.GetDescription()}")
+
+        # Supplementary SMARTS pattern matches
+        for name, pattern in self._supp_brenk.items():
+            if mol.HasSubstructMatch(pattern):
+                alert = f"Brenk_Supp:{name}"
+                if alert not in matched:
+                    matched.append(alert)
+
         return len(matched) == 0, matched

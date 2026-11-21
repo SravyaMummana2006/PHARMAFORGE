@@ -21,9 +21,8 @@ WORKDIR /app
 # Copy dependency specifications first to leverage Docker layer caching
 COPY requirements.txt pyproject.toml ./
 
-# Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies with network retry tolerance
+RUN pip install --no-cache-dir --default-timeout=120 --retries 5 -r requirements.txt
 
 # Copy application source code and configuration
 COPY src/ /app/src/
@@ -31,6 +30,7 @@ COPY config/ /app/config/
 COPY tests/ /app/tests/
 COPY api/ /app/api/
 COPY ui/ /app/ui/
+COPY scripts/ /app/scripts/
 COPY README.md /app/
 
 # Install local package in editable mode

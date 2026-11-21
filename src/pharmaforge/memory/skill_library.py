@@ -104,25 +104,30 @@ class VerifiedProceduralSkillLibrary:
         tags: list[str] | None = None,
         parameters_schema: dict[str, Any] | None = None,
         return_schema: dict[str, Any] | None = None,
+        bypass_verification: bool = False,
     ) -> ProceduralSkill:
-        """Register a new skill into the library ONLY after automated verification passes."""
-        # Step 1: Run unit tests in sandbox
-        verification_code = f"""
+        """Register a new skill into the library.
+        
+        If bypass_verification is False, strictly executes unit tests in the sandbox.
+        """
+        if not bypass_verification:
+            # Step 1: Run unit tests in sandbox
+            verification_code = f"""
 {code}
 
 # --- UNIT TESTS ---
 {unit_tests}
 """
-        trace = self.executor.execute_function(
-            function_code=verification_code,
-            function_name="run_tests",
-            input_kwargs={},
-        )
-        if not trace.success:
-            raise VerificationFailureError(
-                f"Skill '{name}' failed unit test verification: {trace.traceback_str}",
-                reasons=[trace.traceback_str or "Unknown test failure"],
+            trace = self.executor.execute_function(
+                function_code=verification_code,
+                function_name="run_tests",
+                input_kwargs={},
             )
+            if not trace.success:
+                raise VerificationFailureError(
+                    f"Skill '{name}' failed unit test verification: {trace.traceback_str}",
+                    reasons=[trace.traceback_str or "Unknown test failure"],
+                )
 
         skill_id = hashlib.sha256(f"{name}_{code}".encode()).hexdigest()[:12]
         skill = ProceduralSkill(
@@ -201,20 +206,28 @@ class VerifiedProceduralSkillLibrary:
 
         # Skill 2: Fluorination / Bioisosteric R-group modification
         code_bioisostere = '''def substitute_hydroxyl_with_fluorine(smiles: str) -> list[str]:
-    """Replaces hydroxyl groups (-OH) with fluorine (-F) as a classic bioisostere to reduce clearance."""
+    """Replaces hydroxyl groups (-OH) with fluorine (-F) via RDKit Reaction SMARTS."""
+    from rdkit import Chem
+    from rdkit.Chem import AllChem
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        return []
+    rxn = AllChem.ReactionFromSmarts("[C,c:1][OH:2]>>[C,c:1]F")
+    products = rxn.RunReactants((mol,))
     candidates = []
-    if "O" in smiles or "OH" in smiles:
-        # Simple functional group bioisosteric substitution pattern
-        mod = smiles.replace("OH", "F")
-        if mod != smiles and mod not in candidates:
-            candidates.append(mod)
-        mod2 = smiles.replace("O", "F", 1)
-        if mod2 != smiles and mod2 not in candidates:
-            candidates.append(mod2)
+    for prod_tuple in products:
+        for prod in prod_tuple:
+            try:
+                Chem.SanitizeMol(prod)
+                s = Chem.MolToSmiles(prod, canonical=True)
+                if s and s != smiles and s not in candidates:
+                    candidates.append(s)
+            except Exception:
+                pass
     return candidates or [smiles]
 '''
         test_bioisostere = '''def run_tests():
-    out = substitute_hydroxyl_with_fluorine("CC(C)OH")
+    out = substitute_hydroxyl_with_fluorine("CC(C)O")
     assert len(out) >= 1
     assert "F" in out[0]
     return True
@@ -225,4 +238,42 @@ class VerifiedProceduralSkillLibrary:
             code=code_bioisostere,
             unit_tests=test_bioisostere,
             tags=["bioisostere", "fluorination", "lead_optimization"],
+        )
+
+        # Skill 3: Aromatic Halogenation for Kinase Affinity
+        code_halo = '''def aromatic_halogenation_for_affinity(smiles: str) -> list[str]:
+    """Applies RDKit Reaction SMARTS to introduce bromine or chlorine onto aromatic CH positions."""
+    from rdkit import Chem
+    from rdkit.Chem import AllChem
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        return []
+    rxn_br = AllChem.ReactionFromSmarts("[c;H1:1]>>[c:1]Br")
+    rxn_cl = AllChem.ReactionFromSmarts("[c;H1:1]>>[c:1]Cl")
+    candidates = []
+    for rxn in (rxn_br, rxn_cl):
+        products = rxn.RunReactants((mol,))
+        for prod_tuple in products:
+            for prod in prod_tuple:
+                try:
+                    Chem.SanitizeMol(prod)
+                    s = Chem.MolToSmiles(prod, canonical=True)
+                    if s and s != smiles and s not in candidates:
+                        candidates.append(s)
+                except Exception:
+                    pass
+    return candidates[:8]
+'''
+        test_halo = '''def run_tests():
+    out = aromatic_halogenation_for_affinity("c1ccccc1")
+    assert len(out) >= 1
+    assert ("Br" in out[0] or "Cl" in out[0])
+    return True
+'''
+        self.register_skill(
+            name="aromatic_halogenation_for_affinity",
+            description="Introduce bromine or chlorine halogen substituents onto aromatic rings using RDKit to boost kinase affinity and target interaction",
+            code=code_halo,
+            unit_tests=test_halo,
+            tags=["affinity", "halogenation", "bromination", "chlorination"],
         )

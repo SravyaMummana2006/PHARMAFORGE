@@ -47,6 +47,8 @@ class MoleculeCandidate(BaseModel):
 
     def get_property(self, prop_name: str) -> float | None:
         """Safely retrieve a named property score."""
+        if prop_name == "affinity" and self.affinity_score is not None:
+            return float(self.affinity_score)
         if hasattr(self, prop_name):
             val = getattr(self, prop_name)
             if isinstance(val, (int, float)):

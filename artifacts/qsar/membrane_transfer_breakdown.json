@@ -1,0 +1,20 @@
+{
+  "known_compound_transfer": {
+    "n": 41,
+    "mae": 0.4923,
+    "rmse": 0.5604,
+    "r2": 0.8504,
+    "rho": 0.9645,
+    "bias": 0.3768,
+    "logp_corr": -0.0078
+  },
+  "unseen_compound_transfer": {
+    "n": 127,
+    "mae": 0.8057,
+    "rmse": 1.0008,
+    "r2": 0.6188,
+    "rho": 0.7837,
+    "bias": 0.1682,
+    "logp_corr": -0.2561
+  }
+}

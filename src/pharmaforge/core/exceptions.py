@@ -5,6 +5,16 @@ class PharmaForgeError(Exception):
     pass
 
 
+class RDKitUnavailableError(PharmaForgeError):
+    """Raised when an operation requiring genuine chemoinformatics is executed without RDKit installed."""
+    def __init__(self, operation: str = "Chemoinformatics computation"):
+        super().__init__(
+            f"RDKit is mandatory for {operation}, but is unavailable in the current Python environment. "
+            "PHARMAFORGE strictly prohibits silent fallback to unscientific heuristic approximations."
+        )
+
+
+
 class VerificationFailureError(PharmaForgeError):
     """Raised when a molecule or code fails scientific test oracle verification."""
     def __init__(self, message: str, reasons: list[str] | None = None):

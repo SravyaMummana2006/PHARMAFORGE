@@ -1,0 +1,3 @@
+molecule_chembl_id,standardized_smiles,canonical_smiles,median_pchembl,standard_value,standard_units,bemis_murcko_scaffold,assay_chembl_id,document_chembl_id
+CHEMBL289959,Nc1ncnc2c1c1cccc(Cl)c1n2-c1cccc(Br)c1,Nc1ncnc2c1c1cccc(Cl)c1n2-c1cccc(Br)c1,6.4634,344.0,nM,c1ccc(-n2c3cccc(Cl)c3c3ncnc(N)c32)cc1,CHEMBL680017,CHEMBL1141974
+CHEMBL290096,Nc1ncnc2c1c1cccc(Br)c1n2-c1cccc(Br)c1,Nc1ncnc2c1c1cccc(Br)c1n2-c1cccc(Br)c1,7.5686,27.0,nM,c1ccc(-n2c3cccc(Br)c3c3ncnc(N)c32)cc1,CHEMBL680017,CHEMBL1141974

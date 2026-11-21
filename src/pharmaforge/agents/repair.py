@@ -110,7 +110,11 @@ class ExecutionTraceSelfRepairEngine:
 
         elif issue == "undefined_name":
             name = diagnosis.get("name", "")
-            if name in {"math", "re", "json"}:
+            if name in {"Chem", "AllChem"}:
+                return f"from rdkit import {name}\n" + code
+            elif name == "np":
+                return "import numpy as np\n" + code
+            elif name in {"math", "re", "json", "numpy"}:
                 return f"import {name}\n" + code
 
         elif issue == "assertion_failure":

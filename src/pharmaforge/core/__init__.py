@@ -10,6 +10,7 @@ from pharmaforge.core.types import (
 )
 from pharmaforge.core.exceptions import (
     PharmaForgeError,
+    RDKitUnavailableError,
     VerificationFailureError,
     SandboxExecutionTimeoutError,
     SandboxSecurityViolationError,
@@ -26,6 +27,7 @@ __all__ = [
     "VerificationReport",
     "ObjectiveDirection",
     "PharmaForgeError",
+    "RDKitUnavailableError",
     "VerificationFailureError",
     "SandboxExecutionTimeoutError",
     "SandboxSecurityViolationError",

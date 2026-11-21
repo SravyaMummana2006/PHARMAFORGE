@@ -1,0 +1,34 @@
+{
+  "timestamp_utc": "2026-11-20T16:36:33Z",
+  "target": "EGFR (CHEMBL203)",
+  "dataset_name": "Core Homogeneous Cell-Free Biochemical Subset",
+  "training_samples_count": 5226,
+  "features": {
+    "morgan_radius": 2,
+    "morgan_n_bits": 2048,
+    "descriptor_names": [
+      "MolWt",
+      "MolLogP",
+      "TPSA",
+      "NumHDonors",
+      "NumHAcceptors",
+      "NumRotatableBonds",
+      "NumAromaticRings",
+      "HeavyAtomCount",
+      "FractionCSP3",
+      "QED"
+    ],
+    "descriptor_dim": 10,
+    "hybrid_dim": 2058
+  },
+  "models_evaluated": [
+    "M0_Dummy",
+    "M1_RF_Morgan",
+    "M2_RF_Hybrid",
+    "M3_HGB_Desc"
+  ],
+  "best_model_selected": "M2_RF_Hybrid",
+  "model_artifact_path": "artifacts\\qsar\\egfr_qsar_best_model.joblib",
+  "membrane_transfer_samples_count": 168,
+  "benchmark_holdout_samples_count": 2
+}

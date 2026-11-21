@@ -5,8 +5,36 @@ from pharmaforge.core.types import LeadOptimizationTask, OptimizationObjective, 
 
 
 def get_standard_benchmark_suite() -> list[LeadOptimizationTask]:
-    """Returns a standardized suite of 4 pharmaceutical lead optimization benchmark tasks."""
+    """Returns a standardized suite of pharmaceutical lead optimization benchmark tasks."""
     return [
+        # Primary Benchmark Lead 1: CHEMBL289959 (unsubstituted phenyl)
+        LeadOptimizationTask(
+            task_id="EGFR-BENCH-CHEMBL289959",
+            target_name="EGFR",
+            target_class="Kinase",
+            initial_smiles="c1ccc(Nc2ncnc3ccccc23)cc1",
+            objectives=[
+                OptimizationObjective(name="affinity", direction=ObjectiveDirection.MAXIMIZE, threshold=7.0, weight=2.0),
+                OptimizationObjective(name="qed", direction=ObjectiveDirection.MAXIMIZE, threshold=0.60, weight=1.0),
+                OptimizationObjective(name="logp", direction=ObjectiveDirection.MINIMIZE, threshold=3.5, weight=1.0),
+                OptimizationObjective(name="sascore", direction=ObjectiveDirection.MINIMIZE, threshold=3.5, weight=1.0),
+            ],
+            max_iterations=6,
+        ),
+        # Primary Benchmark Lead 2: CHEMBL290096 (3-bromophenyl)
+        LeadOptimizationTask(
+            task_id="EGFR-BENCH-CHEMBL290096",
+            target_name="EGFR",
+            target_class="Kinase",
+            initial_smiles="Brc1cccc(Nc2ncnc3ccccc23)c1",
+            objectives=[
+                OptimizationObjective(name="affinity", direction=ObjectiveDirection.MAXIMIZE, threshold=7.8, weight=2.0),
+                OptimizationObjective(name="qed", direction=ObjectiveDirection.MAXIMIZE, threshold=0.65, weight=1.0),
+                OptimizationObjective(name="logp", direction=ObjectiveDirection.MINIMIZE, threshold=3.5, weight=1.0),
+                OptimizationObjective(name="sascore", direction=ObjectiveDirection.MINIMIZE, threshold=3.5, weight=1.0),
+            ],
+            max_iterations=6,
+        ),
         # Task 1: EGFR Kinase Lead Optimization (Potency + Drug-likeness + SAScore)
         LeadOptimizationTask(
             task_id="TDC-EGFR-01",

@@ -14,9 +14,11 @@ class ScientificDiscoveryPlanner:
         self,
         skill_library: VerifiedProceduralSkillLibrary,
         oracle: ScientificTestOracle | None = None,
+        enable_skill_memory: bool = True,
     ):
         self.library = skill_library
         self.oracle = oracle or ScientificTestOracle()
+        self.enable_skill_memory = enable_skill_memory
 
     def analyze_lead_deficiencies(
         self,
@@ -72,9 +74,11 @@ class ScientificDiscoveryPlanner:
         obj_name = top_deficiency["objective_name"]
         direction = top_deficiency["target_direction"]
 
-        # Formulate query for skill library
-        query = f"optimize {obj_name} {direction} molecular lead"
-        retrieved = self.library.retrieve_skills(query, top_k=2, threshold=0.15)
+        # Formulate query for skill library (if persistent skill memory is enabled)
+        retrieved = []
+        if self.enable_skill_memory:
+            query = f"{obj_name} {direction} optimize molecular lead"
+            retrieved = self.library.retrieve_skills(query, top_k=2, threshold=0.05)
 
         if retrieved:
             best_skill, sim = retrieved[0]

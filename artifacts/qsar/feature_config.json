@@ -1,0 +1,18 @@
+{
+  "morgan_radius": 2,
+  "morgan_n_bits": 2048,
+  "descriptor_names": [
+    "MolWt",
+    "MolLogP",
+    "TPSA",
+    "NumHDonors",
+    "NumHAcceptors",
+    "NumRotatableBonds",
+    "NumAromaticRings",
+    "HeavyAtomCount",
+    "FractionCSP3",
+    "QED"
+  ],
+  "descriptor_dim": 10,
+  "hybrid_dim": 2058
+}

@@ -57,5 +57,6 @@ data/cache/
 data/raw/
 chroma_db/
 skills_cache/
+scratch/
 logs/
 *.log
