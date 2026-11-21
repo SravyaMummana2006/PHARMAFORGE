@@ -30,9 +30,6 @@ services:
 
   # Interactive Streamlit Scientific Dashboard
   ui:
-    build:
-      context: .
-      dockerfile: Dockerfile
     image: pharmaforge:latest
     container_name: pharmaforge-ui
     restart: unless-stopped

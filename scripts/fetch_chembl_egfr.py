@@ -35,7 +35,7 @@ from rdkit import Chem
 from rdkit.Chem.SaltRemover import SaltRemover
 
 BASE_URL = "https://www.ebi.ac.uk/chembl/api/data"
-HEADERS = {"User-Agent": "PharmaForge-Research/1.0 (Academic Research; Purdue SURF 2027)"}
+HEADERS = {"User-Agent": "PharmaForge-Research/1.0 (Open-Source Research Pipeline; ChEMBL API Client)"}
 DATA_DIR = Path("data")
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 

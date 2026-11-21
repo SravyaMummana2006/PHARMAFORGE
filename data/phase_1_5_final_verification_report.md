@@ -2,7 +2,7 @@
 
 **Date:** November 21, 2026  
 **Status:** AUDITED, RECONCILED, RECALCULATED & SCIENTIFICALLY CONSTRAINED  
-**Laboratory Alignment:** Professor Lin Tan (ASSET Lab, Purdue University)  
+**Project:** PHARMAFORGE Research Prototype
 **Research Focus:** *Self-Improving Multi-Agent Framework for Scientific Reasoning and Pharmaceutical Discovery*  
 
 ---

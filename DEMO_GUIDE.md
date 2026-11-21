@@ -1,8 +1,7 @@
 # PHARMAFORGE: Live Demonstration & Research Evaluation Guide
 
-**Project:** PHARMAFORGE (*A Self-Improving Multi-Agent Framework for Scientific Reasoning and Pharmaceutical Discovery*)  
-**Research Alignment:** Professor Lin Tan (ASSET Lab, Purdue University)  
-**Target:** Undergraduate Research Evaluation, Committee Review & Live Demonstration  
+**Project:** PHARMAFORGE (*A Self-Improving Multi-Agent Framework for Scientific Reasoning and Pharmaceutical Discovery*)
+**Purpose:** Architecture Inspection, Reproducibility Audit & Live Demonstration Guide
 
 ---
 
@@ -34,6 +33,11 @@ Once running:
 - **FastAPI Backend Root:** [http://localhost:8000](http://localhost:8000)
 - **FastAPI Health Status:** [http://localhost:8000/health](http://localhost:8000/health)
 - **Interactive OpenAPI Documentation:** [http://localhost:8000/docs](http://localhost:8000/docs)
+
+For subsequent starts using the already-built image without rebuilding:
+```bash
+docker compose up -d
+```
 
 To stop services:
 ```bash

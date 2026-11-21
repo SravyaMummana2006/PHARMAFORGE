@@ -28,19 +28,20 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Helper to find Python 3.13 executable with RDKit
+# Helper to find Python executable with RDKit
 def get_rdkit_python_path() -> str:
-    # First check if current python has rdkit
     try:
         import rdkit
         return sys.executable
     except ImportError:
         pass
     
-    # Check default Python 3.13 installation location
-    py313 = r"C:\Users\Sravya mummana\AppData\Local\Programs\Python\Python313\python.exe"
-    if Path(py313).exists():
-        return py313
+    env_py = os.environ.get("PHARMAFORGE_PYTHON")
+    if env_py and Path(env_py).exists():
+        return env_py
+    local_py313 = Path.home() / "AppData" / "Local" / "Programs" / "Python" / "Python313" / "python.exe"
+    if local_py313.exists():
+        return str(local_py313)
     return "python"
 
 RDKIT_PYTHON = get_rdkit_python_path()
@@ -168,22 +169,34 @@ if SKILLS_FILE.exists():
 # --- SIDEBAR ---
 with st.sidebar:
     st.title("🧪 PHARMAFORGE")
-    st.caption(f"Research Prototype v{__version__}")
+    st.caption(f"Experimental Research Prototype · v{__version__}")
     st.markdown("---")
-    st.markdown("**Lab Alignment:**")
-    st.markdown("Prof. Lin Tan (ASSET Lab, Purdue University)")
     st.markdown("**Research Focus:**")
-    st.markdown("*Self-Improving AI Agents for Pharmaceutical Applications and Beyond*")
+    st.markdown("*Procedural Learning for Molecular Optimization*")
     st.markdown("---")
     num_skills = len(library.skills) if library else len(persistent_skills) or 3
-    st.metric("Verified Skills in VPSL", num_skills)
-    st.metric("Verifier Backend", "RDKit STO-IV (Verified)" if (is_in_process or Path(RDKIT_PYTHON).exists()) else "Unavailable")
-    st.metric("QSAR Surrogate", "RandomForest (Model M2)" if Path("artifacts/qsar/egfr_qsar_best_model.joblib").exists() else "Disabled")
+
+    # Check backend connectivity and runtime availability
+    api_connected = False
+    backend_rdkit = False
+    backend_qsar = False
     try:
         r_health = requests.get(f"{API_URL}/health", timeout=1.0)
-        api_connected = (r_health.status_code == 200)
+        if r_health.status_code == 200:
+            api_connected = True
+            hdata = r_health.json()
+            backend_rdkit = bool(hdata.get("rdkit_available", False))
+            backend_qsar = bool(hdata.get("qsar_model_loaded", False))
     except Exception:
         api_connected = False
+
+    # Determine runtime availability
+    rdkit_available = backend_rdkit if api_connected else bool(oracle and getattr(oracle, "is_rdkit_backed", False))
+    qsar_available = backend_qsar if api_connected else bool(qsar_predictor and getattr(qsar_predictor, "is_ready", False))
+
+    st.metric("Verified Skills in VPSL", num_skills)
+    st.metric("Verifier Backend", "RDKit STO-IV (Verified)" if rdkit_available else "Unavailable")
+    st.metric("QSAR Surrogate", "QSAR Surrogate (Loaded)" if qsar_available else "Disabled")
     st.metric("FastAPI Backend", f"Connected ✅ ({API_URL})" if api_connected else "Local Execution Mode")
     st.markdown("---")
     st.info("⚠️ **Epistemic Note**: All properties and affinities are computational approximations. In silico predictions do not establish biological efficacy or clinical tolerability.")
@@ -477,10 +490,10 @@ with tab4:
 with tab5:
     st.header("System Architecture & Research Foundations")
     st.markdown("""
-    ### Intellectual Synergy with Professor Lin Tan's ASSET Lab
-    1. **Automated Program Repair (APR):** Skills with runtime exceptions are repaired via localized AST fault diagnosis (inspired by CURE and TENET).
-    2. **Test-Harness Selection (TENET):** Procedural skills are gated by formal unit test suites in an isolated sandbox rather than subjective LLM self-evaluation.
-    3. **Unified Agent Capabilities (USEagent):** Seamless state switching between planning, tool synthesis, sandboxed execution, and verification.
+    ### Architectural Foundations in Automated Program Repair & Synthesis
+    1. **Automated Program Repair (APR):** Skills encountering runtime exceptions are repaired via localized AST fault diagnosis and traceback reflection (drawing from program repair literature including CURE and TENET).
+    2. **Test-Harness Verification:** Procedural skills are strictly gated by formal unit test suites in an isolated sandbox rather than subjective prompt reflections.
+    3. **Closed-Loop Execution:** Seamless coordination between multi-objective planning, procedural tool synthesis, sandboxed execution, and independent verification.
     
     ### Formal Verification Pipeline
     - **Step 1:** Scientific Discovery Planner breaks multi-objective goal into prioritized deficiencies.

@@ -8,7 +8,7 @@ from pharmaforge.sandbox.executor import IsolatedCodeExecutor
 
 
 class ExecutionTraceSelfRepairEngine:
-    """Automated Program Repair (APR) engine inspired by Lin Tan's CURE and TENET paradigms.
+    """Automated Program Repair (APR) engine applying execution traceback reflection.
     
     Diagnoses syntax, runtime, and assertion errors from execution traces, applies
     localized code repairs, and validates against unit tests in the sandbox.
