@@ -8,11 +8,14 @@ import sys
 from pathlib import Path
 import streamlit as st
 import pandas as pd
+import requests
 
 # Ensure src directory is in sys.path
 src_dir = Path(__file__).resolve().parent.parent / "src"
 if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
+
+API_URL = os.environ.get("API_URL", "http://localhost:8000")
 
 from pharmaforge import __version__
 from pharmaforge.benchmarks.tdc_loader import get_standard_benchmark_suite
@@ -68,11 +71,20 @@ oracle, library, qsar_predictor, orchestrator, is_in_process = get_system_compon
 
 # Function to run STO-IV verification
 def run_sto_verification(smiles: str) -> dict:
+    # 1. Try Backend API first if configured
+    try:
+        resp = requests.post(f"{API_URL}/api/v1/verify", json={"smiles": smiles}, timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+    except Exception:
+        pass
+
+    # 2. Try in-process oracle
     if is_in_process and oracle is not None:
         rep = oracle.verify_smiles(smiles)
         return rep.model_dump()
     
-    # Subprocess execution via RDKit-enabled Python
+    # 3. Subprocess execution via RDKit-enabled Python
     script = (
         'import sys, json; sys.path.insert(0, "src"); '
         'from pharmaforge.verifier.oracle import ScientificTestOracle; '
@@ -98,6 +110,19 @@ def run_sto_verification(smiles: str) -> dict:
 
 # Function to run live optimization
 def run_live_optimization(task_id: str, iterations: int = 5) -> dict:
+    # 1. Try Backend API first if configured
+    try:
+        resp = requests.post(
+            f"{API_URL}/api/v1/optimize",
+            json={"task_id": task_id, "max_iterations": iterations},
+            timeout=180,
+        )
+        if resp.status_code == 200:
+            return resp.json()
+    except Exception:
+        pass
+
+    # 2. Try in-process orchestrator
     if is_in_process and orchestrator is not None:
         tasks = get_standard_benchmark_suite()
         target_task = next((t for t in tasks if t.task_id == task_id), None)
@@ -105,7 +130,7 @@ def run_live_optimization(task_id: str, iterations: int = 5) -> dict:
             target_task.max_iterations = iterations
             return orchestrator.run_optimization(target_task)
             
-    # Subprocess execution via RDKIT_PYTHON
+    # 3. Subprocess execution via RDKIT_PYTHON
     cmd = [
         RDKIT_PYTHON,
         "scripts/run_optimization_task.py",
@@ -154,6 +179,12 @@ with st.sidebar:
     st.metric("Verified Skills in VPSL", num_skills)
     st.metric("Verifier Backend", "RDKit STO-IV (Verified)" if (is_in_process or Path(RDKIT_PYTHON).exists()) else "Unavailable")
     st.metric("QSAR Surrogate", "RandomForest (Model M2)" if Path("artifacts/qsar/egfr_qsar_best_model.joblib").exists() else "Disabled")
+    try:
+        r_health = requests.get(f"{API_URL}/health", timeout=1.0)
+        api_connected = (r_health.status_code == 200)
+    except Exception:
+        api_connected = False
+    st.metric("FastAPI Backend", f"Connected ✅ ({API_URL})" if api_connected else "Local Execution Mode")
     st.markdown("---")
     st.info("⚠️ **Epistemic Note**: All properties and affinities are computational approximations. In silico predictions do not establish biological efficacy or clinical tolerability.")
 

@@ -1,64 +1,59 @@
 services:
-  # Central MLflow tracking server for experiment metrics and molecular artifacts
-  mlflow:
-    image: python:3.11-slim
-    container_name: pharmaforge-mlflow
-    restart: unless-stopped
-    command: >
-      bash -c "pip install --no-cache-dir mlflow &&
-               mlflow server --backend-store-uri sqlite:////mlflow/mlflow.db --default-artifact-root /mlflow/artifacts --host 0.0.0.0 --port 5000"
-    ports:
-      - "5000:5000"
-    volumes:
-      - mlflow_data:/mlflow
-    networks:
-      - pharmaforge-net
-
-  # Core API server: orchestrates multi-agent tasks, VPSL, and verification
+  # Core Scientific Agent API: Orchestrates multi-agent tasks, STO-IV verifier, and QSAR inference
   api:
     build:
       context: .
       dockerfile: Dockerfile
+    image: pharmaforge:latest
     container_name: pharmaforge-api
     restart: unless-stopped
-    environment:
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - ENVIRONMENT=production
     ports:
       - "8000:8000"
+    environment:
+      - PYTHONPATH=/app/src
+      - ENVIRONMENT=production
     volumes:
       - ./src:/app/src
+      - ./api:/app/api
       - ./data:/app/data
+      - ./artifacts:/app/artifacts
+      - ./scripts:/app/scripts
       - ./skills_cache:/app/skills_cache
-    depends_on:
-      - mlflow
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
     networks:
       - pharmaforge-net
 
-  # Interactive Streamlit scientific dashboard
+  # Interactive Streamlit Scientific Dashboard
   ui:
     build:
       context: .
       dockerfile: Dockerfile
+    image: pharmaforge:latest
     container_name: pharmaforge-ui
     restart: unless-stopped
-    command: ["streamlit", "run", "ui/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
-    environment:
-      - API_URL=http://api:8000
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    command: ["streamlit", "run", "ui/app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true"]
     ports:
       - "8501:8501"
+    environment:
+      - API_URL=http://api:8000
+      - PYTHONPATH=/app/src
     volumes:
       - ./ui:/app/ui
       - ./src:/app/src
+      - ./data:/app/data
+      - ./artifacts:/app/artifacts
+      - ./scripts:/app/scripts
+      - ./skills_cache:/app/skills_cache
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     networks:
       - pharmaforge-net
-
-volumes:
-  mlflow_data:
 
 networks:
   pharmaforge-net:

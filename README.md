@@ -101,21 +101,56 @@ Surrogate model $M_2$ (Random Forest Hybrid, 5,226 core biochemical compounds) c
 
 ## 6. Quickstart & Demonstration
 
-Detailed instructions, Windows commands, and live demonstration sequences are provided in [DEMO_GUIDE.md](DEMO_GUIDE.md).
+The fastest and most reliable way to run PHARMAFORGE is using **Docker Compose**, which builds and starts both the FastAPI backend and Streamlit scientific dashboard in a single command with all dependencies, pre-trained QSAR models, and pre-computed benchmark artifacts ready out-of-the-box.
 
-### 1. Launch Interactive Scientific Dashboard
+### Option A: One-Command Docker Setup (Recommended)
+
+**Prerequisites:** Ensure [Docker Desktop](https://www.docker.com/products/docker-desktop/) is installed and running.
+
+```bash
+# 1. Clone and navigate to the repository
+git clone https://github.com/SravyaMummana2006/PHARMAFORGE.git
+cd PHARMAFORGE
+
+# 2. Build and launch all services in detached mode
+docker compose up --build -d
+```
+
+Once running:
+- **Streamlit Scientific Dashboard:** [http://localhost:8501](http://localhost:8501)
+- **FastAPI Backend & Health:** [http://localhost:8000/health](http://localhost:8000/health)
+- **Interactive OpenAPI Documentation:** [http://localhost:8000/docs](http://localhost:8000/docs)
+
+To stop services:
+```bash
+docker compose down
+```
+
+---
+
+### Option B: Native Python Setup (Development Alternative)
+
+For local development or environments without Docker:
+
 ```powershell
+# 1. Create and activate a virtual environment
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+
+# 2. Install dependencies in editable mode
+pip install -r requirements.txt
+pip install -e .
+
+# 3. Launch the FastAPI backend
+python -m uvicorn api.main:app --host 127.0.0.1 --port 8000
+
+# 4. Launch the Streamlit dashboard (in a separate terminal)
 python -m streamlit run ui/app.py --server.port 8501
 ```
-Open your browser at `http://localhost:8501`.
 
-### 2. Launch FastAPI Backend
-```powershell
-python -m uvicorn api.main:app --host 127.0.0.1 --port 8000
-```
-API Documentation: `http://localhost:8000/docs`.
+---
 
-### 3. Run Automated 7-Step Demonstration Script
+### Option C: Automated 7-Step Demonstration Script
 ```powershell
 python scripts/verify_demo_pipeline.py
 ```

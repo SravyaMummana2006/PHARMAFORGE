@@ -45,20 +45,34 @@ app = FastAPI(
 # Instantiate core singletons safely if in-process RDKit is available
 oracle = None
 skill_library = None
+qsar_predictor = None
 orchestrator = None
 
 try:
     from pharmaforge.verifier.oracle import ScientificTestOracle
     from pharmaforge.memory.skill_library import VerifiedProceduralSkillLibrary
     from pharmaforge.agents.orchestrator import PharmaForgeOrchestrator
+    from pharmaforge.qsar.predictor import EGFRQSARPredictor
     
     oracle = ScientificTestOracle()
     if oracle.is_rdkit_backed:
         skill_library = VerifiedProceduralSkillLibrary(oracle=oracle)
-        orchestrator = PharmaForgeOrchestrator(oracle=oracle, skill_library=skill_library)
+        try:
+            qsar_predictor = EGFRQSARPredictor()
+            if not qsar_predictor.is_ready:
+                qsar_predictor = None
+        except Exception:
+            qsar_predictor = None
+
+        orchestrator = PharmaForgeOrchestrator(
+            oracle=oracle,
+            skill_library=skill_library,
+            qsar_predictor=qsar_predictor,
+        )
 except Exception:
     oracle = None
     skill_library = None
+    qsar_predictor = None
     orchestrator = None
 
 
@@ -98,11 +112,14 @@ def root() -> dict[str, str]:
 
 @app.get("/health")
 def health_check() -> dict[str, Any]:
-    skills_count = len(skill_library.skills) if skill_library else 3
+    skills_count = len(skill_library.skills) if skill_library else 0
+    rdkit_ready = bool(oracle and getattr(oracle, "is_rdkit_backed", False))
+    qsar_ready = bool(qsar_predictor and getattr(qsar_predictor, "is_ready", False))
     return {
         "status": "healthy",
         "registered_skills": skills_count,
-        "rdkit_available": True,
+        "rdkit_available": rdkit_ready,
+        "qsar_model_loaded": qsar_ready,
         "version": __version__,
     }
 
@@ -182,22 +199,33 @@ def list_benchmarks() -> list[dict[str, Any]]:
 def run_optimization(payload: OptimizeRequest) -> dict[str, Any]:
     """Execute closed-loop multi-objective lead optimization."""
     if orchestrator:
-        objectives = [
-            OptimizationObjective(
-                name=obj["name"],
-                direction=ObjectiveDirection(obj.get("direction", "maximize")),
-                threshold=obj.get("threshold"),
-                weight=obj.get("weight", 1.0),
+        try:
+            from pharmaforge.benchmarks.tdc_loader import get_standard_benchmark_suite
+            tasks = get_standard_benchmark_suite()
+            target_task = next((t for t in tasks if t.task_id == payload.task_id), None)
+        except Exception:
+            target_task = None
+
+        if target_task:
+            target_task.max_iterations = payload.max_iterations
+            task = target_task
+        else:
+            objectives = [
+                OptimizationObjective(
+                    name=obj["name"],
+                    direction=ObjectiveDirection(obj.get("direction", "maximize")),
+                    threshold=obj.get("threshold"),
+                    weight=obj.get("weight", 1.0),
+                )
+                for obj in payload.objectives
+            ]
+            task = LeadOptimizationTask(
+                task_id=payload.task_id,
+                target_name=payload.target_name,
+                initial_smiles=payload.initial_smiles,
+                objectives=objectives,
+                max_iterations=payload.max_iterations,
             )
-            for obj in payload.objectives
-        ]
-        task = LeadOptimizationTask(
-            task_id=payload.task_id,
-            target_name=payload.target_name,
-            initial_smiles=payload.initial_smiles,
-            objectives=objectives,
-            max_iterations=payload.max_iterations,
-        )
         return orchestrator.run_optimization(task)
     
     # Subprocess execution bridge

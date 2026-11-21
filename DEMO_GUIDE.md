@@ -8,22 +8,43 @@
 
 ## 1. System Requirements & Prerequisites
 
-- **Operating System:** Windows 10/11 (or Linux / macOS)
-- **Python Runtime:** Python 3.10+ (Recommended: Python 3.11 for UI/API services; Python 3.11 or 3.13 with RDKit and scikit-learn for scientific computation)
-- **Key Scientific Packages:** `rdkit`, `scikit-learn`, `joblib`, `numpy`, `scipy`, `pandas`
-- **Key Web & API Packages:** `streamlit`, `fastapi`, `uvicorn`, `pydantic`
-
-> **Note on Environment Architecture:**  
-> On Windows, if your scientific stack (RDKit) and web stack (Streamlit) are installed in separate Python interpreters, PHARMAFORGE automatically bridges them via its subprocess execution runner. You can also explicitly specify the RDKit Python interpreter path by setting:
-> ```powershell
-> $env:PHARMAFORGE_PYTHON = "C:\Path\To\Python\python.exe"
-> ```
+- **Primary Setup:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows with WSL 2 backend, macOS, or Linux).
+- **Alternative Setup (Native Python):** Python 3.10+ (Recommended: Python 3.11 with RDKit, scikit-learn, FastAPI, and Streamlit).
+- **Scientific Stack:** `rdkit`, `scikit-learn`, `joblib`, `numpy`, `scipy`, `pandas`, `torch`.
+- **Web & API Stack:** `streamlit`, `fastapi`, `uvicorn`, `pydantic`, `requests`.
 
 ---
 
 ## 2. Setup & Installation Commands
 
-### Option A: Standard Virtual Environment (Recommended)
+### Option A: One-Command Docker Setup (Recommended)
+This launches both the FastAPI backend and Streamlit dashboard with all scientific models, datasets, and dependencies self-contained:
+
+```bash
+# 1. Clone and navigate to the repository
+git clone https://github.com/SravyaMummana2006/PHARMAFORGE.git
+cd PHARMAFORGE
+
+# 2. Build and launch all services in detached mode
+docker compose up --build -d
+```
+
+Once running:
+- **Streamlit Scientific Dashboard:** [http://localhost:8501](http://localhost:8501)
+- **FastAPI Backend Root:** [http://localhost:8000](http://localhost:8000)
+- **FastAPI Health Status:** [http://localhost:8000/health](http://localhost:8000/health)
+- **Interactive OpenAPI Documentation:** [http://localhost:8000/docs](http://localhost:8000/docs)
+
+To stop services:
+```bash
+docker compose down
+```
+
+---
+
+### Option B: Native Virtual Environment (Development Alternative)
+For environments where Docker is unavailable or for local Python development:
+
 ```powershell
 # 1. Clone and navigate to the repository
 cd PHARMAFORGE
@@ -35,29 +56,19 @@ python -m venv venv
 # 3. Install dependencies in editable mode
 pip install -r requirements.txt
 pip install -e .
-```
 
----
-
-## 3. Launching Services
-
-### 3.1 Launching the FastAPI Backend Server
-The FastAPI backend exposes REST endpoints for deterministic molecular verification (STO-IV), skill retrieval (VPSL), and multi-objective optimization.
-
-```powershell
+# 4. Launch the FastAPI backend
 python -m uvicorn api.main:app --host 127.0.0.1 --port 8000
-```
-- **Service Root:** `http://127.0.0.1:8000/`
-- **Interactive OpenAPI Documentation:** `http://127.0.0.1:8000/docs`
-- **Health Check:** `http://127.0.0.1:8000/health`
 
-### 3.2 Launching the Streamlit Scientific Dashboard
-The interactive dashboard provides instant inspection of pre-computed benchmark ablation studies, live single-step lead optimization, semantic skill retrieval, and STO-IV molecular validation.
-
-```powershell
+# 5. Launch the Streamlit scientific dashboard (in a separate terminal)
 python -m streamlit run ui/app.py --server.port 8501
 ```
-- **Local URL:** `http://localhost:8501`
+
+> **Note on Environment Architecture:**
+> On Windows, if your scientific stack (RDKit) and web stack (Streamlit) are installed in separate Python interpreters, PHARMAFORGE automatically bridges them via its subprocess execution runner. You can also explicitly specify the RDKit Python interpreter path by setting:
+> ```powershell
+> $env:PHARMAFORGE_PYTHON = "C:\Path\To\Python\python.exe"
+> ```
 
 ---
 
@@ -160,7 +171,8 @@ ALL 7 DEMONSTRATION WORKFLOW STEPS SUCCESSFULLY VERIFIED PROGRAMMATICALLY
 
 | Error | Root Cause | Verified Solution |
 | :--- | :--- | :--- |
-| `Address already in use` (Port 8501 or 8000) | Another service or terminal is occupying the default port. | Launch on a different port:<br>`python -m streamlit run ui/app.py --server.port 8502`<br>`python -m uvicorn api.main:app --port 8001` |
-| `ModuleNotFoundError: No module named 'rdkit'` | Active Python environment lacks RDKit. | Ensure RDKit is installed in your active environment (`pip install rdkit`) or set `$env:PHARMAFORGE_PYTHON` pointing to your RDKit interpreter. |
-| `ModuleNotFoundError: No module named 'pharmaforge'` | Package not installed in editable mode. | Run `pip install -e .` from repository root, or verify that `src` is in `sys.path` (handled automatically by `ui/app.py` and `api/main.py`). |
+| `Cannot connect to the Docker daemon` / `pipe/docker_engine` | Docker Desktop is not started or still initializing. | Open Docker Desktop and ensure the engine icon indicates "Engine running", then re-run `docker compose up --build -d`. |
+| `port is already allocated` (Port 8501 or 8000) | Another service or terminal is occupying the default port. | Stop existing instances using `docker compose down` or kill local Python processes on ports 8000/8501, or adjust host ports in `docker-compose.yml`. |
+| `ModuleNotFoundError: No module named 'rdkit'` | Native Python environment lacks RDKit. | Use Docker Compose (`docker compose up --build`), or ensure RDKit is installed in your local environment (`pip install rdkit`), or set `$env:PHARMAFORGE_PYTHON`. |
+| `ModuleNotFoundError: No module named 'pharmaforge'` | Package not installed in editable mode in native Python. | Run `pip install -e .` from repository root, or verify that `src` is in `sys.path` (handled automatically inside Docker and in `ui/app.py` / `api/main.py`). |
 | `LayoutsMixin.container() got unexpected keyword argument 'border'` | Using Streamlit < 1.30.0. | Dashboard code has been updated to use standard `st.container()`, compatible with Streamlit 1.28.0+. |
